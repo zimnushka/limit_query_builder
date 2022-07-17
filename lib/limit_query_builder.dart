@@ -8,11 +8,11 @@ class LimitQueryController<T> extends ScrollController {
   LimitQueryController(
       {this.type = LimitQueryType.limitOffset, this.limit = 10});
 
-  ///if ```LimitQueryType.limitOffset``` in builder return
+  ///if ```LimitQueryType.limitOffset``` builder return
   /// * limit = limit
   /// * offset = offset
   ///
-  ///if ```LimitQueryType.pageSize``` in builder return
+  ///if ```LimitQueryType.pageSize``` builder return
   /// * pageSize = limit
   /// * pageIndex = offset
   final LimitQueryType type;
@@ -29,7 +29,9 @@ class LimitQueryController<T> extends ScrollController {
   int get currentOffset => _offsetItems;
   List<T> get items => _items;
 
-  ///clear all items, offset to 0, call first load
+  /// * clear all items
+  /// * set offset to 0
+  /// * call first load
   void update() async {
     _offsetItems = 0;
     _items.clear();
@@ -50,8 +52,19 @@ class LimitQueryBuilder<T> extends StatefulWidget {
   }) : super(key: key);
 
   final LimitQueryController<T> controller;
+
+  ///return preload objects for custom load animations
   final PreLoadOptions<T>? preLoadEmptyObject;
+
+  /// On scroll ```position.extentAfter < 300``` builder call this query for get new items
   final Future<List<T>> Function(int offset, int limit) queryLoad;
+
+  /// return items and load status, you can use
+  /// * ListView
+  /// * GridView
+  /// * CustomScrollView
+  ///
+  /// and any scroll widget! enjoy)
   final Widget Function(
     BuildContext context,
     AsyncSnapshot<List<T>> snapshot,
@@ -63,6 +76,7 @@ class LimitQueryBuilder<T> extends StatefulWidget {
 
 class _LimitQueryBuilderState<T> extends State<LimitQueryBuilder<T>> {
   bool _isLoadMore = false;
+
   late AsyncSnapshot<List<T>> snap;
 
   load({bool isFirstLoad = false}) async {
@@ -89,10 +103,21 @@ class _LimitQueryBuilderState<T> extends State<LimitQueryBuilder<T>> {
         if (!mounted) return;
         setState(() {});
 
-        widget.controller._items.addAll(
-          await widget.queryLoad(
-              widget.controller._offsetItems, widget.controller.limit),
-        );
+        switch (widget.controller.type) {
+          case LimitQueryType.limitOffset:
+            widget.controller._items.addAll(
+              await widget.queryLoad(
+                  widget.controller._offsetItems, widget.controller.limit),
+            );
+            break;
+          case LimitQueryType.pageSize:
+            widget.controller._items.addAll(
+              await widget.queryLoad(
+                  widget.controller._offsetItems ~/ widget.controller.limit,
+                  widget.controller.limit),
+            );
+            break;
+        }
 
         widget.controller._offsetItems += widget.controller.limit;
 
