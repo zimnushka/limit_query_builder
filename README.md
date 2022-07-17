@@ -20,8 +20,14 @@ TODO: List what your package can do. Maybe include images, gifs, or videos.
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+Installing
+Add LimitQueryBuilder to your pubspec.yaml file:
+
+dependencies:
+  limit_query_builder:
+Import limit_query_builder in files that it will be used:
+
+import 'package:get/get.dart';
 
 ## Usage
 
