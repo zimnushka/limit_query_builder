@@ -3,12 +3,23 @@ import 'package:limit_query_builder/models/preload_options.dart';
 
 enum LimitQueryType { limitOffset, pageSize }
 
-//CONTROLLER SAVE DATA ITEMS AND CAN UPDATE QUERY
+/// controller for save items and update query
 class LimitQueryController<T> extends ScrollController {
   LimitQueryController(
       {this.type = LimitQueryType.limitOffset, this.limit = 10});
 
+  ///if ```LimitQueryType.limitOffset``` in builder return
+  /// * limit = limit
+  /// * offset = offset
+  ///
+  ///if ```LimitQueryType.pageSize``` in builder return
+  /// * pageSize = limit
+  /// * pageIndex = offset
   final LimitQueryType type;
+
+  ///if ```LimitQueryType.limitOffset``` then limit query
+  ///
+  ///if ```LimitQueryType.pageSize``` then pageSize
   final int limit;
 
   int _offsetItems = 0;
@@ -18,7 +29,8 @@ class LimitQueryController<T> extends ScrollController {
   int get currentOffset => _offsetItems;
   List<T> get items => _items;
 
-  update() async {
+  ///clear all items, offset to 0, call first load
+  void update() async {
     _offsetItems = 0;
     _items.clear();
 
@@ -28,7 +40,6 @@ class LimitQueryController<T> extends ScrollController {
   }
 }
 
-//SCROLLCONTROLLER IN LIMITCONTROLLER GET BOTTOM SIDE OFFSET AND LOAD
 class LimitQueryBuilder<T> extends StatefulWidget {
   const LimitQueryBuilder({
     Key? key,
@@ -54,51 +65,13 @@ class _LimitQueryBuilderState<T> extends State<LimitQueryBuilder<T>> {
   bool _isLoadMore = false;
   late AsyncSnapshot<List<T>> snap;
 
-  firstLoad() async {
+  load({bool isFirstLoad = false}) async {
     try {
-      if (!_isLoadMore) {
-        if (widget.preLoadEmptyObject != null) {
-          snap = AsyncSnapshot.withData(
-            ConnectionState.waiting,
-            widget.controller._items +
-                (widget.preLoadEmptyObject != null
-                    ? List.generate(
-                        widget.preLoadEmptyObject!.itemCount,
-                        (index) => widget.preLoadEmptyObject!.item,
-                      )
-                    : []),
-          );
-        }
-
-        _isLoadMore = true;
-
-        if (!mounted) return;
-        setState(() {});
-
-        widget.controller._items.addAll(
-          await widget.queryLoad(
-              widget.controller._offsetItems, widget.controller.limit),
-        );
-
-        widget.controller._offsetItems += widget.controller.limit;
-        _isLoadMore = false;
-
-        snap = AsyncSnapshot.withData(
-          ConnectionState.done,
-          widget.controller._items,
-        );
-
-        if (!mounted) return;
-        setState(() {});
-      }
-    } catch (_) {}
-  }
-
-  load() async {
-    try {
-      if (widget.controller.position.extentAfter < 300 &&
-          !_isLoadMore &&
-          widget.controller._items.length >= widget.controller._offsetItems) {
+      if (((widget.controller.position.extentAfter < 300 &&
+                  widget.controller._items.length >=
+                      widget.controller._offsetItems) ||
+              isFirstLoad) &&
+          !_isLoadMore) {
         if (widget.preLoadEmptyObject != null) {
           snap = AsyncSnapshot.withData(
             ConnectionState.waiting,
@@ -132,14 +105,16 @@ class _LimitQueryBuilderState<T> extends State<LimitQueryBuilder<T>> {
         if (!mounted) return;
         setState(() {});
       }
-    } catch (_) {}
+    } catch (error) {
+      rethrow;
+    }
   }
 
   @override
   void initState() {
     snap = const AsyncSnapshot.nothing();
-    widget.controller._onUpdate = firstLoad;
-    firstLoad();
+    widget.controller._onUpdate = () => load(isFirstLoad: true);
+    load(isFirstLoad: true);
     widget.controller.addListener(load);
     super.initState();
   }
